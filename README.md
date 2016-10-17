@@ -29,7 +29,7 @@ user_role_change_permissions($administrator_role_id, array('administer site-wide
 module_enable(array('rbkc_custom_meta'), true);
 ```
 
-4. All of the settings above can be changed in the Admin UI at /admin/structure/site_category.
+All of the settings above can be changed in the Admin UI at /admin/structure/site_category.
 
 
 
