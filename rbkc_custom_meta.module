@@ -1,0 +1,115 @@
+<?php
+
+/**
+ * Implementation of hook_menu
+ */
+function rbkc_custom_meta_menu() {
+
+	$items = array();
+
+	$items['admin/structure/site_category'] = array(
+		'title' => 'Site-wide search category',
+		'description' => 'Sets site-wide category',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('rbkc_custom_meta_admin'),
+		'access arguments' => array('administer site-wide category'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+
+	return $items;
+}
+
+/**
+ * Implentation of hook_permission
+ */
+function rbkc_custom_meta_permission() {
+	return array(
+		'administer site-wide category' => array(
+			'title' => t('Administer site-wide search category'),
+			'description' => t('Decide whether to use one search category for the whole site.'),
+		),
+	);	
+}
+
+/**
+ * Implementation of hook_html_head_alter()
+ */
+function rbkc_custom_meta_html_head_alter(&$head_elements) {
+
+	// check if the site admin wants us to use one sitewide category or use tags
+	$use_sitewide__category = variable_get('rbkc_custom_meta_use_sitewide_category', false);
+	if ($use_sitewide__category) {
+		$search_category = variable_get('rbkc_custom_meta_sitewide_category', '');
+	} else {
+		if (arg(0) == 'node') { 	// only add the category term if this is a node
+			$search_category = _rbkc_custom_meta_get_current_node_category();
+		}
+	}
+
+	if (!empty($search_category)) {
+		$head_elements['search_category_meta'] = array(
+			'#tag' => 'meta',
+			'#attributes' => array(
+				'name' => 'search-category',
+				'content' => $search_category,
+			),
+			'#type' => 'html_tag',
+		);				
+	}
+
+
+}
+
+function _rbkc_custom_meta_get_current_node_category() {
+	try {
+
+		$node = menu_get_object();
+		$node_wrapper = entity_metadata_wrapper('node' , $node);
+
+		// get the category content
+		if (isset($node->field_service_hub)) {
+			$category_parents = taxonomy_get_parents_all($node_wrapper->field_service_hub->value()->tid);
+			$service_term = array_pop($category_parents); // gets the root ancestor
+			$search_category = strip_tags($service_term->name);
+		} else {
+			$search_category = '';
+		}		
+
+		return $search_category;
+
+	} catch (Exception $e) {
+		
+		watchdog('rbkc_custom_meta', 'Error when trying to generate custom metatags: '.print_r($e, true), WATCHDOG_ERROR);
+	
+	}
+}
+
+function rbkc_custom_meta_admin() {
+	$form = array();
+
+	$form['rbkc_custom_meta_use_sitewide_category'] = array(
+		'#type' => 'checkbox',
+		'#title' => t('Use site-wide search category'),
+		'#default_value' => variable_get('rbkc_custom_meta_use_sitewide_category', 0),
+		'#description' => t("Tick this box to use a single site-wide cagegory name for every age on this site, instead of a service-hub name. If this is a microsite, you probably want this switched on."),
+	);
+
+	$form['rbkc_custom_meta_sitewide_category'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Category name for search results'),
+		'#default_value' => variable_get('rbkc_custom_meta_sitewide_category', ''),
+		'#size' => 300,
+		'#maxlength' => 300,
+		'#description' => t("Enter the search results category that this site's pages will display under."),
+		'#states' => array(
+			'visible' => array(
+				':input[name="rbkc_custom_meta_use_sitewide_category"]' => array('checked' => true),
+			),
+			'required' => array(
+				':input[name="rbkc_custom_meta_use_sitewide_category"]' => array('checked' => true),
+			),
+		),		
+	);
+
+	return system_settings_form($form);
+}

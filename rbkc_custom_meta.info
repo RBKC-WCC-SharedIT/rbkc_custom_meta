@@ -1,0 +1,5 @@
+name = RBKC Custom Meta
+description = Insert custom meta tags into every page
+core = 7.x
+package = RBKC
+version = 7.x-1.0
